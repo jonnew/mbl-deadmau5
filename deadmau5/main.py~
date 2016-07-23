@@ -1,0 +1,120 @@
+#!/usr/bin/python
+
+'''
+Deadmau5 to kill some mice
+
+TODO:
+
+1. Record state-transition events
+2. Link to StupidCtrl
+3. Get rid of state/logic in maze firmware. This should be handled by the
+remotes (like this appplication...)
+'''
+
+from tracker import Tracker
+import numpy as np
+import math
+import signal
+import sys
+import zmq
+import pygame
+
+CM2PX = 25 
+OFFSET = 250 
+
+def rotateVector(v, theta):
+    return ( v[0]*math.cos(theta)-v[1]*math.sin(theta) , v[0]*math.sin(theta)+v[1]*math.cos(theta)) 
+
+def cm2px(pos_cm):
+    
+    pos_x = int(round(pos_cm[0] * CM2PX + OFFSET))
+    pos_y= int(round(pos_cm[1] * CM2PX + OFFSET))
+    return (pos_x, pos_y)
+
+def main():
+
+    # HACK HACK
+    waitstate = 1
+    width = 1000
+    height = 1000
+    bgcolor = 0, 0, 0
+
+    screen = pygame.display.set_mode((width, height))
+    clock = pygame.time.Clock()
+    running = True
+
+
+    world_mouse_pos_cm=(8, 8)
+    world_mouse_angle=math.radians(0)
+
+    world_arena_pos_cm=(0,0) 			# from 0mq
+    world_arena_angle=math.radians(0)		# from 0mq
+
+    arena_diam_cm = 20
+
+    home_pos_angle=math.radians(120)
+    home_diam_cm = 3
+
+    left_pos_angle=math.radians(0)
+    left_diam_cm = 3
+
+    right_pos_angle=math.radians(-120)
+    right_diam_cm = 3
+
+    home_pos = [ math.cos(float(home_pos_angle))*arena_diam_cm/2, math.sin(float(home_pos_angle))*arena_diam_cm/2 ]
+    left_pos = [ math.cos(float(left_pos_angle))*arena_diam_cm/2, math.sin(float(left_pos_angle))*arena_diam_cm/2 ]
+    right_pos= [ math.cos(float(right_pos_angle))*arena_diam_cm/2, math.sin(float(right_pos_angle))*arena_diam_cm/2 ]
+
+    # zmq context
+    ctx = zmq.Context()
+
+    tracker = Tracker()
+    tracker.connect(ctx, 'tcp://localhost:5555')
+
+    #pygame.init()
+
+    while True:
+
+        # Get latest position
+        pos = tracker.get_position()
+
+        # Extract xy, heading
+        world_arena_pos_cm = pos['pos_xy']
+        heading_unit_vec = pos['head_xy']
+        world_arena_angle = math.atan2(heading_unit_vec[1], heading_unit_vec[0])
+
+
+        #print(heading_unit_vec)
+
+        # Catch pygame events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: sys.exit()
+
+        # Correct position/heading
+	mouse_from_arena_cm = tuple(-np.subtract(world_arena_pos_cm, world_mouse_pos_cm)) # calc pos relative to (rotated) arena
+	arena_mouse_pos_cm = rotateVector(mouse_from_arena_cm,world_arena_angle) # and rotate to where it is relative to arena angle
+	arena_mouse_pos_cm = ((arena_mouse_pos_cm[0]),(arena_mouse_pos_cm[1]))
+	arena_mouse_angle = world_arena_angle # just used for display?
+
+        # Draw things
+        
+	screen.fill(bgcolor)
+
+	#pygame.draw.circle(screen, (255,0,0), cm2px(world_arena_pos_cm),6, 1)
+
+
+	pygame.draw.circle(screen, (10,10,200), cm2px((0,0)), CM2PX * arena_diam_cm/2, 3)
+	pygame.draw.circle(screen, (200,200,200), cm2px(home_pos), CM2PX * home_diam_cm, 2)
+	pygame.draw.circle(screen, (0,200,0), cm2px(left_pos), CM2PX * left_diam_cm, 2)
+	pygame.draw.circle(screen, (200,0,0), cm2px(right_pos), CM2PX * right_diam_cm, 2)
+
+
+	pygame.draw.circle(screen, (255,255,255), cm2px(arena_mouse_pos_cm), 9, 2)
+	mouse_angle_indicator = tuple(np.subtract(cm2px(arena_mouse_pos_cm), rotateVector((0,20), arena_mouse_angle)))
+	pygame.draw.line(screen,(255,255,255), cm2px(arena_mouse_pos_cm), mouse_angle_indicator, 2)
+		
+	pygame.display.flip()
+
+
+if __name__ == '__main__':
+    main()
