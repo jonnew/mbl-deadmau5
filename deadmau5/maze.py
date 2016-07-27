@@ -1,86 +1,80 @@
+from deadmau5globals import *
+from mouse import Mouse
 import numpy as np
 import os
 import sys
 import pygame
 import math
 
-CM2PX = 25 
-OFFSET = 300 
-
 class Maze():
 
-    def __init__(self, mouse_pos_cm):
+    def __init__(self, screen, arena_rad_cm, site_rad_cm):
 
-        # pygame stuff
-        width = 1000
-        height = 1000
-        self.bgcolor = 0, 0, 0
+        self.screen = screen
 
-        self.screen = pygame.display.set_mode((width, height))
-        pygame.init()
+        self.arena_rad_cm = arena_rad_cm
+        self.site_rad_cm = site_rad_cm
 
-        self.world_mouse_pos_cm = mouse_pos_cm
-        self.world_mouse_angle=math.radians(0)
+        home_pos_angle=math.radians(globalAngleOffset(120))
 
-        self.arena_diam_cm = 20
+        left_pos_angle=math.radians(globalAngleOffset(-30))
+        right_pos_angle=math.radians(globalAngleOffset(-90))
 
-        home_pos_angle=math.radians(120)
-        self.home_diam_cm = 3
+        wall_angle = math.radians(globalAngleOffset(300))
 
-        left_pos_angle=math.radians(0)
-        self.left_diam_cm = 3
+        self.mice = []
 
-        right_pos_angle=math.radians(-120)
-        self.right_diam_cm = 3
-
-        self.home_pos = [ math.cos(float(home_pos_angle))*self.arena_diam_cm/2, math.sin(float(home_pos_angle))*self.arena_diam_cm/2 ]
-        self.left_pos = [ math.cos(float(left_pos_angle))*self.arena_diam_cm/2, math.sin(float(left_pos_angle))*self.arena_diam_cm/2 ]
-        self.right_pos= [ math.cos(float(right_pos_angle))*self.arena_diam_cm/2, math.sin(float(right_pos_angle))*self.arena_diam_cm/2 ]
-
-        # load poop image
-        #img_dir = os.path.dirname(os.path.abspath(__file__)) 
-        img_dir = "/home/jon/public/mbl-deadmau5/images"
-        self.poop_image = pygame.image.load(os.path.join(img_dir, "deadmau5.bmp"))
+        self.site_rad_pos_cm = arena_rad_cm 
+        self.home_pos = [ math.cos(float(home_pos_angle))*self.site_rad_pos_cm, math.sin(float(home_pos_angle))*self.site_rad_pos_cm ]
+        self.left_pos = [ math.cos(float(left_pos_angle))*self.site_rad_pos_cm, math.sin(float(left_pos_angle))*self.site_rad_pos_cm ]
+        self.right_pos= [ math.cos(float(right_pos_angle))*self.site_rad_pos_cm, math.sin(float(right_pos_angle))*self.site_rad_pos_cm ]
+        self.wall_pos = [ math.cos(float(wall_angle))*self.site_rad_pos_cm, math.sin(float(wall_angle))*self.site_rad_pos_cm ]
 
     def draw(self, pos):
 
-        # Clear the screen
-        self.screen.fill((self.bgcolor))
-
         # Extract xy, heading
-        world_arena_pos_cm = pos['pos_xy']
-        heading_unit_vec = pos['head_xy']
-        world_arena_angle = math.atan2(heading_unit_vec[1], heading_unit_vec[0])
-    
-        # Catch pygame events
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT: sys.exit()
+        if pos['pos_ok'] and pos['head_ok']:
 
-        # Correct position/heading
-        mouse_from_arena_cm = tuple(
-            -np.subtract(world_arena_pos_cm, self.world_mouse_pos_cm)) # calc pos relative to (rotated) arena
-        arena_mouse_pos_cm = rotateVector(mouse_from_arena_cm, world_arena_angle) # and rotate to where it is relative to arena angle
+            world_arena_pos_cm = pos['pos_xy']
+            heading_unit_vec = pos['head_xy']
 
-	# draw stuff
-	self.screen.blit(self.poop_image, (0,0));
+            # Arena
+            pygame.draw.circle(self.screen, (10,10,200), cm2px((0,0)), CM2PX * self.arena_rad_cm, 3)
 
-        pygame.draw.circle(self.screen, (10,10,200), cm2px((0,0)), CM2PX * self.arena_diam_cm/2, 3)
-        pygame.draw.circle(self.screen, (200,200,200), cm2px(self.home_pos), CM2PX * self.home_diam_cm, 2)
-        pygame.draw.circle(self.screen, (0,200,0), cm2px(self.left_pos), CM2PX * self.left_diam_cm, 2)
-        pygame.draw.circle(self.screen, (200,0,0), cm2px(self.right_pos), CM2PX * self.right_diam_cm, 2)
+            # Wall
+            pygame.draw.line(self.screen, (10,10,200), cm2px((0,0)), cm2px(self.wall_pos), 3)
 
-        pygame.draw.circle(self.screen, (255,255,255), cm2px(arena_mouse_pos_cm), 9, 2)
-        mouse_angle_indicator = tuple(np.subtract(cm2px(arena_mouse_pos_cm), rotateVector((0,20), world_arena_angle)))
-        pygame.draw.line(self.screen,(255,255,255), cm2px(arena_mouse_pos_cm), mouse_angle_indicator, 2)
+            # Reward and home site
+            pygame.draw.circle(self.screen, (200,200,200), cm2px(self.home_pos), CM2PX * self.site_rad_cm, 2)
+            label = FONT.render("Home", 1, (255,255,0))
+            self.screen.blit(label, cm2px(self.home_pos))
+
+            pygame.draw.circle(self.screen, (0,200,0), cm2px(self.left_pos), CM2PX * self.site_rad_cm, 2)
+            label = FONT.render("L", 1, (255,255,0))
+            self.screen.blit(label, cm2px(self.left_pos))
+
+            pygame.draw.circle(self.screen, (200,0,0), cm2px(self.right_pos), CM2PX * self.site_rad_cm, 2)
+            label = FONT.render("R", 1, (255,255,0))
+            self.screen.blit(label, cm2px(self.right_pos)) 
+
+            # Print sample info
+            time_idx =  "Index : " + str(pos['tick'] )
+            label = FONT.render(time_idx, 1, (255,255,0))
+            self.screen.blit(label, (10, SCREEN_PX_Y - 120))
+
+            time_sec =  "Time (s): " + "%.2f" % (pos['usec'] / 1.0e6)
+            label = FONT.render(time_sec, 1, (255,255,0))
+            self.screen.blit(label, (10, SCREEN_PX_Y - 80))
             
-        pygame.display.flip()
-        pygame.display.update()
+            x = "%.2f" % pos['pos_xy'][0] 
+            y = "%.2f" % pos['pos_xy'][1]
+            pos_lab =  "Pos. (cm) [" + x + ", " + y + "]"
+            label = FONT.render(pos_lab, 1, (255,255,0))
+            self.screen.blit(label, (10, SCREEN_PX_Y - 40))
+            
 
-def rotateVector(v, theta):
-    return ( v[0]*math.cos(theta)-v[1]*math.sin(theta) , v[0]*math.sin(theta)+v[1]*math.cos(theta)) 
-
-def cm2px(pos_cm):
-    
-    pos_x = int(round(pos_cm[0] * CM2PX + OFFSET))
-    pos_y= int(round(pos_cm[1] * CM2PX + OFFSET))
-    return (pos_x, pos_y)
+        for m in self.mice:
+            m.draw(pos, self.screen)
+            
+    def addMouse(self, mouse):
+        self.mice.append(mouse)

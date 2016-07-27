@@ -7,9 +7,10 @@ class Recorder:
     def __init__(self, folder, name):
         self.folder = folder
         self.name = name
-        self.paused = True
+        self.paused = False
         self.f = None
         self.write_number = 0
+        self.new()
     
     def close_file(self):
         if self.f:
@@ -27,8 +28,8 @@ class Recorder:
         
     # RPC Calls
 
-    def run(self, cmd):
-        return getattr(self, cmd)()
+    #def run(self, cmd):
+    #    return getattr(self, cmd)()
 
     def new(self):
         date = datetime.datetime.now()
@@ -38,14 +39,14 @@ class Recorder:
         self.f.write(bytes('{', 'utf8'))
         return 'File opened'
 
-    def start(self):
-        self.paused = False
-        return 'Recording started'
+    #def start(self):
+    #    self.paused = False
+    #    return 'Recording started'
 
-    def pause(self):
-        self.paused = True
-        return 'Recording Paused'
+    #def pause(self):
+    #    self.paused = True
+    #    return 'Recording Paused'
 
-    def ping(self):
-        return 'Recorder ready.'
+    #def ping(self):
+    #    return 'Recorder ready.'
 

@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import sys
 import pygame
 import math
@@ -36,9 +37,10 @@ class Maze():
         self.left_pos = [ math.cos(float(left_pos_angle))*self.arena_diam_cm/2, math.sin(float(left_pos_angle))*self.arena_diam_cm/2 ]
         self.right_pos= [ math.cos(float(right_pos_angle))*self.arena_diam_cm/2, math.sin(float(right_pos_angle))*self.arena_diam_cm/2 ]
 
-	# load poop image
-	poop_image = pygame.image.load("poop.jpg")
-	poop_rect = poop_image.rect();
+        # load poop image
+        #img_dir = os.path.dirname(os.path.abspath(__file__)) 
+        img_dir = "/home/jon/public/mbl-deadmau5/images"
+        self.poop_image = pygame.image.load(os.path.join(img_dir, "deadmau5.bmp"))
 
     def draw(self, pos):
 
@@ -60,7 +62,7 @@ class Maze():
         arena_mouse_pos_cm = rotateVector(mouse_from_arena_cm, world_arena_angle) # and rotate to where it is relative to arena angle
 
 	# draw stuff
-	screen.blit(poop_image,poop_rect);
+	self.screen.blit(self.poop_image, (330,300));
 
         pygame.draw.circle(self.screen, (10,10,200), cm2px((0,0)), CM2PX * self.arena_diam_cm/2, 3)
         pygame.draw.circle(self.screen, (200,200,200), cm2px(self.home_pos), CM2PX * self.home_diam_cm, 2)
